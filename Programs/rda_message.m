@@ -1,5 +1,5 @@
    
-function [raw,SQN] = rda_message(sock,hdr)
+function [raw,SQN] = rda_message(sock,hdr,sampleDurationS)
 %% Getting information for the header
     Fs = hdr.Fs;  % getting the sampling frquency of the data   
     resolution = hdr.resolutions(1,1);  % Assuming the resolution is same across the channels, change this if otherwise
@@ -10,7 +10,7 @@ function [raw,SQN] = rda_message(sock,hdr)
     raw = [];
     
 %     for i = 1:1000
-    while (col < Fs) % here check how brain people are doing/ solving the problem
+    while (col < round(sampleDurationS*Fs)) % here check how brain people are doing/ solving the problem
     % read the message header
         msg       = [];
         msg.uid   = tcpread_new(sock, 16, 'uint8',0);

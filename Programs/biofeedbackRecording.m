@@ -1,6 +1,17 @@
 % This is the main program to run a recording session.
 
-function biofeedbackRecording(subjectName)
+% Adding option to use openBCI instead of BrainProducts. For this to work,
+% we need to download liblsl-Matlab from
+% https://github.com/labstreaminglayer/liblsl-Matlab. The OpenBCI option was
+% added by Nilay Agrawal and modified by Supratim Ray
+
+% Inputs:
+% subjectName - use 'test' for default
+% deviceName - 'BP' for BrainProducts or 'OpenBCI'
+
+function biofeedbackRecording(subjectName,deviceName)
+
+if ~exist('deviceName','var');      deviceName = 'OpenBCI';             end
 
 hFigure1 = figure(1);
 set(hFigure1,'Name','Experimenter Console');
@@ -63,17 +74,23 @@ state = 0; % by default state is zero which would be updated according to the ca
 
 % Set up communication with EEG device and run in synthetic mode if connection
 % is not made.
-if ispc
-    sock=-1;
-%    [cfg,sock] = rda_open;
-    if sock == -1
-        hdr = getSynthDataHeader;
+if strcmpi(deviceName,'BP')
+    if ispc
+        [cfg,sock] = rda_open;
+        if sock == -1
+            hdr = getSynthDataHeader;
+            cLims = [0 1];
+            signalLims = [-0.5 0.5];
+        else
+            hdr = rda_header(cfg,sock); % rda_open would pass the socket information
+        end
     else
-        hdr = rda_header(cfg,sock); % rda_open would pass the socket information
+        sock=-1;
+        hdr = getSynthDataHeader;
     end
+elseif strcmpi(deviceName,'OpenBCI')
 else
-    sock=-1;
-    hdr = getSynthDataHeader;
+    error([deviceName ' not supported.']);
 end
 
 % Durations
@@ -176,7 +193,11 @@ while 1
             end
             
             % Get Data, Power and alphaPos
-            [rawDataTMP,signalLims,cLims] = getRawData(sock,hdr,sampleDurationS);
+            if strcmpi(deviceName,'BP')
+                rawDataTMP = getRawData(sock,hdr,sampleDurationS);
+            elseif strcmpi(deviceName,'OpenBCI')
+                % get raw data from openBCI
+            end
             [power,freqVals] = getPower(rawDataTMP,Fs,maxFrequencyHz);
             alphaPos = intersect(find(freqVals>=alphaRange(1)),find(freqVals<=alphaRange(2)));
             
@@ -345,17 +366,15 @@ for i=2:numSessions
     trialTypeList = cat(1,trialTypeList,trialTypeTMP(randperm(trialsPerSession)));
 end
 end
-function [rawData,signalLims,cLims]=getRawData(sock,hdr,sampleDurationS)
+function rawData=getRawData(sock,hdr,sampleDurationS)
 Fs = hdr.Fs;
 nChans = hdr.nChans;  % The channels from which data is extracted
 
 if sock==-1
     rawData = rand(nChans,sampleDurationS*Fs)-0.5;
-    signalLims = [-0.5 0.5]; 
-    cLims = [0 1];
-    pause(1);
+    pause(sampleDurationS);
 else
-    rawData = rda_message(sock,hdr); % Get Data for 1 second
+    rawData = rda_message(sock,hdr,sampleDurationS);
 end
 end
 function hdr = getSynthDataHeader
