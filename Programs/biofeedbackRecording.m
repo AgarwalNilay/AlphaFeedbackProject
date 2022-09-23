@@ -3,7 +3,7 @@
 % Adding option to use openBCI instead of BrainProducts. For this to work,
 % we need to download liblsl-Matlab from
 % https://github.com/labstreaminglayer/liblsl-Matlab. The OpenBCI option was
-% added by Nilay Agrawal and modified by Supratim Ray
+% added by Nilay Agarwal and modified by Supratim Ray
 
 % Inputs:
 % subjectName - use 'test' for default
@@ -11,6 +11,7 @@
 
 function biofeedbackRecording(subjectName,deviceName)
 
+if ~exist('subjectName','var');      subjectName = 'TestSubject';             end
 if ~exist('deviceName','var');      deviceName = 'OpenBCI';             end
 
 hFigure1 = figure(1);
@@ -87,8 +88,24 @@ if strcmpi(deviceName,'BP')
     else
         sock=-1;
         hdr = getSynthDataHeader;
+        
     end
 elseif strcmpi(deviceName,'OpenBCI')
+    [~, ~, inlet] = OpenBCIConnect;
+    if inlet == -1
+        hdr = getSynthDataHeader;
+        cLims = [0 1];
+        signalLims = [-0.5 0.5];
+    else
+        % Creating the header. Not sure about this part
+        hdr = [];
+        hdr.Fs = 250;
+        hdr.nChans = 8;
+        hdr.label = ['O1', 'O2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'Cz'];
+        hdr.resolutions = 1/250;
+        cLims = [0 1];
+        signalLims = [-50 50];
+    end
 else
     error([deviceName ' not supported.']);
 end
@@ -194,9 +211,9 @@ while 1
             
             % Get Data, Power and alphaPos
             if strcmpi(deviceName,'BP')
-                rawDataTMP = getRawData(sock,hdr,sampleDurationS);
+                rawDataTMP = getRawDataBP(sock,hdr,sampleDurationS);
             elseif strcmpi(deviceName,'OpenBCI')
-                % get raw data from openBCI
+                rawDataTMP = getRawDataOpenBCI(inlet, hdr, sampleDurationS);
             end
             [power,freqVals] = getPower(rawDataTMP,Fs,maxFrequencyHz);
             alphaPos = intersect(find(freqVals>=alphaRange(1)),find(freqVals<=alphaRange(2)));
@@ -288,12 +305,17 @@ while 1
         end
          
     elseif state == 4 % Exit the Experiment
-        if sock ~=-1
-            rda_close(sock);
+        if strcmpi(deviceName,'BP')
+            if sock ~=-1
+                rda_close(sock);
+            end
+            close(hFigure1);
+            close(hFigure2);
+            break;
+        elseif strcmpi(deviceName, 'OpenBCI')
+            close(hFigure1);
+            close(hFigure2);
         end
-        close(hFigure1);
-        close(hFigure2);
-        break;
     end
     drawnow;
 end
@@ -366,7 +388,8 @@ for i=2:numSessions
     trialTypeList = cat(1,trialTypeList,trialTypeTMP(randperm(trialsPerSession)));
 end
 end
-function rawData=getRawData(sock,hdr,sampleDurationS)
+
+function rawData=getRawDataBP(sock,hdr,sampleDurationS)
 Fs = hdr.Fs;
 nChans = hdr.nChans;  % The channels from which data is extracted
 
@@ -377,17 +400,32 @@ else
     rawData = rda_message(sock,hdr,sampleDurationS);
 end
 end
+
+function rawData=getRawDataOpenBCI(inlet, hdr, sampleDurationS)
+Fs = hdr.Fs;
+nChans = hdr.nChans;
+
+if inlet == -1
+    rawData = rand(nChans,sampleDurationS*Fs)-0.5;
+    pause(sampleDurationS);
+else
+    rawData = DataStreamv2(inlet, round(sampleDurationS));
+end
+end
+
 function hdr = getSynthDataHeader
 hdr.Fs=500;
 hdr.nChans=5;
 end
+
 function plotData(hRawTrace,hTF,timeToPlot,signalToPlot,timeToPlotTF,freqVals,powerToPlot,alphaRange,displayTimeRange,signalLims,cLims)
 plot(hRawTrace,timeToPlot,mean(signalToPlot,1));
 axis(hRawTrace,[displayTimeRange signalLims]);
 imagesc(timeToPlotTF,freqVals,powerToPlot,'Parent',hTF);
+colormap(hTF, "jet")
+clim(cLims);
 line(displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(1),1),'color','k','linestyle','--','Parent',hTF);
 line(displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(2),1),'color','k','linestyle','--','Parent',hTF);
 xlim(hTF,displayTimeRange);
 set(hTF,'YDir','normal');
-%caxis(hTF,cLims);
 end
