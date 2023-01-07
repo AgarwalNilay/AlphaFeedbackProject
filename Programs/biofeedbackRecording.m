@@ -11,7 +11,7 @@
 
 function biofeedbackRecording(subjectName,deviceName)
 
-if ~exist('subjectName','var');      subjectName = 'TestSubject';             end
+if ~exist('subjectName','var');     subjectName = 'TestSubject';        end
 if ~exist('deviceName','var');      deviceName = 'OpenBCI';             end
 
 hFigure1 = figure(1);
@@ -97,7 +97,7 @@ elseif strcmpi(deviceName,'OpenBCI')
         cLims = [0 1];
         signalLims = [-0.5 0.5];
     else
-        % Creating the header. Not sure about this part
+        % Creating the header
         hdr = [];
         hdr.Fs = 250;
         hdr.nChans = 8;
@@ -213,7 +213,7 @@ while 1
             if strcmpi(deviceName,'BP')
                 rawDataTMP = getRawDataBP(sock,hdr,sampleDurationS);
             elseif strcmpi(deviceName,'OpenBCI')
-                rawDataTMP = getRawDataOpenBCI(inlet, hdr, sampleDurationS);
+                rawDataTMP = getRawDataOpenBCI(inlet,hdr,sampleDurationS);
             end
             [power,freqVals] = getPower(rawDataTMP,Fs,maxFrequencyHz);
             alphaPos = intersect(find(freqVals>=alphaRange(1)),find(freqVals<=alphaRange(2)));
@@ -309,13 +309,10 @@ while 1
             if sock ~=-1
                 rda_close(sock);
             end
-            close(hFigure1);
-            close(hFigure2);
-            break;
-        elseif strcmpi(deviceName, 'OpenBCI')
-            close(hFigure1);
-            close(hFigure2);
         end
+        close(hFigure1);
+        close(hFigure2);
+        break;
     end
     drawnow;
 end
@@ -388,7 +385,6 @@ for i=2:numSessions
     trialTypeList = cat(1,trialTypeList,trialTypeTMP(randperm(trialsPerSession)));
 end
 end
-
 function rawData=getRawDataBP(sock,hdr,sampleDurationS)
 Fs = hdr.Fs;
 nChans = hdr.nChans;  % The channels from which data is extracted
@@ -400,8 +396,7 @@ else
     rawData = rda_message(sock,hdr,sampleDurationS);
 end
 end
-
-function rawData=getRawDataOpenBCI(inlet, hdr, sampleDurationS)
+function rawData=getRawDataOpenBCI(inlet,hdr,sampleDurationS)
 Fs = hdr.Fs;
 nChans = hdr.nChans;
 
@@ -409,15 +404,13 @@ if inlet == -1
     rawData = rand(nChans,sampleDurationS*Fs)-0.5;
     pause(sampleDurationS);
 else
-    rawData = DataStreamv2(inlet, round(sampleDurationS));
+    rawData = dataStream(inlet,hdr,round(sampleDurationS));
 end
 end
-
 function hdr = getSynthDataHeader
 hdr.Fs=500;
 hdr.nChans=5;
 end
-
 function plotData(hRawTrace,hTF,timeToPlot,signalToPlot,timeToPlotTF,freqVals,powerToPlot,alphaRange,displayTimeRange,signalLims,cLims)
 plot(hRawTrace,timeToPlot,mean(signalToPlot,1));
 axis(hRawTrace,[displayTimeRange signalLims]);
