@@ -113,6 +113,11 @@ else
         end
     end
     title(analysisPlotHandles.powerVsTrial,titleStr);
+    title(analysisPlotHandles.powerVsTime, 'Alpha Power vs Time')
+    ylabel(analysisPlotHandles.powerVsTrial, 'Raw Power (log10(\muV^2))')
+    ylabel(analysisPlotHandles.powerVsTime, 'Raw Power (log10(\muV^2))')
+    ylabel(analysisPlotHandles.diffPowerVsTrial, '\DeltaPower (Bel)')
+    ylabel(analysisPlotHandles.barPlot, '\DeltaPower (Bel)')
     xlim(analysisPlotHandles.barPlot,[0.5 3.5]);
     set(analysisPlotHandles.barPlot,'XTick',1:3,'XTickLabel',typeNameList);
     drawnow;

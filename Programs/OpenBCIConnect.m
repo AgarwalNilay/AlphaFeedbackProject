@@ -20,7 +20,7 @@ function [lib, resStream, inlet] = OpenBCIConnect
             disp('Connected Successfully')
         end
         resolvec = resolvec + 1;
-        if resolvec == 6 %Wait for 5 iterations before shutting down
+        if resolvec == 4 %Wait for 3 iterations before shutting down
             disp('Could not resolve. Please check if Stream has started and try again.')
             inlet = -1;
             return

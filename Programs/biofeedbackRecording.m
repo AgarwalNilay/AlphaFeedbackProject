@@ -65,9 +65,9 @@ hAlphaMax = uicontrol('Parent',hRangesPanel,'style','edit','String','13',...
     'Unit','Normalized','Position', [0.75 0.5 0.25 0.5]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Generate Plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-hExperimentHandle       = subplot('Position',[0.05 0.85 0.9 0.04],'Parent',hFigure1);
-hRawTrace               = subplot('Position',[0.05 0.7 0.9 0.14],'Parent',hFigure1,'XTickLabel',[]);
-hTF                     = subplot('Position',[0.05 0.55 0.9 0.14],'Parent',hFigure1);
+hExperimentHandle       = subplot('Position',[0.05 0.87 0.9 0.02],'Parent',hFigure1);
+hRawTrace               = subplot('Position',[0.05 0.72 0.9 0.14],'Parent',hFigure1,'XTickLabel',[]);
+hTF                     = subplot('Position',[0.05 0.57 0.9 0.14],'Parent',hFigure1);
 [analysisPlotHandles,colorNameTypes] = biofeedbackAnalysis(subjectName,folderName); % Get plot handles for analysis
 
 %%%%%%%%%%% Initializing the parameters for the main programme %%%%%%%%%%%%
@@ -159,6 +159,9 @@ while 1
     
     if state == 0 % Idle state
         timeStartS = 0; % don't do anything
+        if strcmpi(deviceName,'OpenBCI') %Flushing out residual data stored in LSL
+            getRawDataOpenBCI(inlet,hdr,sampleDurationS);
+        end
         
     elseif state<=3 % Start, Calibrate or Run
         if (state==2) % Calibration
@@ -375,8 +378,10 @@ numSessions = 5;
 trialsPerSession = 12;
 
 % In the first session, we have 75% valid and 25% constant tones
-trialTypeTMP = [(1+zeros(1,round(0.75*trialsPerSession))) (3+zeros(1,round(0.25*trialsPerSession)))];
-trialTypeList = trialTypeTMP(randperm(trialsPerSession));
+% Small change to make sure the first two trials are always valid
+trialTypeTMP = [(1+zeros(1,round(0.75*trialsPerSession)-2)) (3+zeros(1,round(0.25*trialsPerSession)))];
+trialTypeList = trialTypeTMP(randperm(trialsPerSession - 2));
+trialTypeList = [1 1 trialTypeList];
 
 for i=2:numSessions
     
@@ -413,6 +418,8 @@ hdr.nChans=5;
 end
 function plotData(hRawTrace,hTF,timeToPlot,signalToPlot,timeToPlotTF,freqVals,powerToPlot,alphaRange,displayTimeRange,signalLims,cLims)
 plot(hRawTrace,timeToPlot,mean(signalToPlot,1));
+ylabel(hRawTrace, 'Voltage (\muV)');
+set(hRawTrace,'XTick',[]);
 axis(hRawTrace,[displayTimeRange signalLims]);
 imagesc(timeToPlotTF,freqVals,powerToPlot,'Parent',hTF);
 colormap(hTF, "jet")
@@ -420,5 +427,7 @@ clim(cLims);
 line(displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(1),1),'color','k','linestyle','--','Parent',hTF);
 line(displayTimeRange,zeros(1,2) + find(freqVals>=alphaRange(2),1),'color','k','linestyle','--','Parent',hTF);
 xlim(hTF,displayTimeRange);
+ylabel(hTF, 'Frequency (Hz)');
+xlabel(hTF, 'Time (s)');
 set(hTF,'YDir','normal');
 end
